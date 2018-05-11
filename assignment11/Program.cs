@@ -16,11 +16,10 @@ namespace assignment11
 
             DAL dal = new DAL
             {
-                ConnectionString = connectionString,
-                CommandType = System.Data.CommandType.Text
+                ConnectionString = connectionString
             };
 
-            var a = dal.GetData<Users>("usp2", new KeyValuePair<string, object>[] { new KeyValuePair<string, object>("@name", "Andranik")});
+            var a = dal.GetData<Users>("selcet", new KeyValuePair<string, object>[] { new KeyValuePair<string, object>("@name", "Andranik")});
             foreach(var b in a)
             {
                 Console.WriteLine($"{b.ID}   {b.FirstName}   {b.LastName}");

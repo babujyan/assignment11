@@ -12,13 +12,6 @@ namespace assignment11
     {
         public string ConnectionString { get; set; }
 
-        public CommandType CommandType { get; set; }
-
-        public DAL()
-        {
-            this.CommandType = CommandType.Text;
-        }
-
         public IEnumerable<T> GetData<T>(string code, ICollection<KeyValuePair<string, object>> parameters)
         {
             List<T> list = new List<T>();
@@ -26,48 +19,48 @@ namespace assignment11
             using (var connection = new SqlConnection(this.ConnectionString))
             {
                 SqlCommand command = new SqlCommand(code, connection);
-                //command.CommandType = this.CommandType;
+                var c = code.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
 
-                string query = "select * from sysobjects where type='P' and name=" + code;
-                bool spExists = false;
-
-                //
-                
-                
-                connection.Open();
-                using (SqlCommand command1 = new SqlCommand(query, connection))
+                if(c.Length == 1)
                 {
-                    using (SqlDataReader reader1 = command1.ExecuteReader())
+                    command.CommandType = CommandType.StoredProcedure;
+                    if (parameters != null)
                     {
-                        while (reader1.Read())
+                        foreach (var parameter in parameters)
                         {
-                            spExists = true;
-                            break;
+                            command.Parameters.AddWithValue(parameter.Key, parameter.Value);
                         }
                     }
                 }
-                
+                else if(c.Length > 1)
+                {
+                    command.CommandType = CommandType.Text;
+                    command.CommandText = code;
+                }
+                else
+                {
+                    
+                }
+                //command.CommandType = this.CommandType;
+                //if(this.CommandType == CommandType.StoredProcedure)
+                //{
+                //    if(parameters != null)
+                //    {
+                //        foreach(var parameter in parameters)
+                //        {
+                //            command.Parameters.AddWithValue(parameter.Key, parameter.Value);
+                //        }
+                //    }
+                //}
+                //else
+                //{
+                //    command.CommandText = code;
+                //}
 
                 try
                 {
-                   // connection.Open();
-                    
-                    
-
-
-                    if(spExists)
-                    {
-                        if(parameters != null)
-                        {
-                            foreach(var parameter in parameters)
-                            {
-                                command.Parameters.AddWithValue(parameter.Key, parameter.Value);
-                            }
-                        }
-                    }
-
+                    connection.Open();
                     SqlDataReader reader = command.ExecuteReader();
-
                     while (reader.Read())
                     {
                         T obj = (T)typeof(T).GetConstructor(new Type[] { }).Invoke(null);
