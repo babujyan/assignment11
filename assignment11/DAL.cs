@@ -1,87 +1,97 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Data;
+using System.Collections.Generic;
+using System.IO;
 using System.Data.SqlClient;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using assignment11;
 
-namespace assignment11
+namespace DataAccessLayer
 {
+    /// <summary>
+    /// Data Access Layer.
+    /// </summary>
     class DAL : IDAL
     {
         public string ConnectionString { get; set; }
-
-        public IEnumerable<T> GetData<T>(string code, ICollection<KeyValuePair<string, object>> parameters)
+        /// <summary>
+        /// The method executes the code and returns the result.
+        /// </summary>
+        /// <typeparam name="T">Return type of a method.</typeparam>
+        /// <param name="code">SQL code.</param>
+        /// <param name="parameters">Parametrs for code.</param>
+        /// <returns>IEnumerable<T></returns>
+        public IEnumerable<T> GetData<T>(string code, params KeyValuePair<string, object>[] parameters)
         {
-            List<T> list = new List<T>();
             
-            using (var connection = new SqlConnection(this.ConnectionString))
-            {
-                SqlCommand command = new SqlCommand(code, connection);
-                var c = code.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            //In a debug folder.
+            var inFile = File.ReadLines(@"test.txt");
 
-                if(c.Length == 1)
+            //IEnumerable<T> for returning values.
+            List<T> result = new List<T>();
+
+            //Creating new SQLconaction.
+            using (SqlConnection connection = new SqlConnection(ConnectionString))
+            {
+                string query = null;
+
+                string[] c = null;
+
+                foreach (var line in inFile)
+                {
+                    c = line.Split(new char[] { ':' }, StringSplitOptions.RemoveEmptyEntries);
+                    if(c[0].Split(new string[] { "=>" }, StringSplitOptions.RemoveEmptyEntries)[0].Trim() == code)
+                    {
+                        query = c[0].Split(new string[] { "=>" }, StringSplitOptions.RemoveEmptyEntries)[1].Trim();
+                        break;
+                    }
+                }
+
+                SqlCommand command = new SqlCommand(query, connection);
+
+                if (c.Length > 1)
                 {
                     command.CommandType = CommandType.StoredProcedure;
-                    if (parameters != null)
+                    for(var i = 1; i < c.Length; i++)
                     {
-                        foreach (var parameter in parameters)
+                        var haveParametrs = false;
+                        var key = c[i].Split(new char[] { '=' }, StringSplitOptions.RemoveEmptyEntries)[0].Trim();                      
+                        foreach(var keyValuePair in parameters)
                         {
-                            command.Parameters.AddWithValue(parameter.Key, parameter.Value);
+                            if(key == keyValuePair.Key)
+                            {
+                                command.Parameters.AddWithValue(c[i].Split(new char[] { '=' }, StringSplitOptions.RemoveEmptyEntries)[1].Trim(), keyValuePair.Value);
+                                haveParametrs = true;
+                                break;
+                            }
+                        }
+                        if(!haveParametrs)
+                        {
+                            throw new ArgumentException("Parameter has not been given or been invalid");
                         }
                     }
                 }
-                else if(c.Length > 1)
-                {
-                    command.CommandType = CommandType.Text;
-                    command.CommandText = code;
-                }
-                else
-                {
-                    
-                }
-                //command.CommandType = this.CommandType;
-                //if(this.CommandType == CommandType.StoredProcedure)
-                //{
-                //    if(parameters != null)
-                //    {
-                //        foreach(var parameter in parameters)
-                //        {
-                //            command.Parameters.AddWithValue(parameter.Key, parameter.Value);
-                //        }
-                //    }
-                //}
-                //else
-                //{
-                //    command.CommandText = code;
-                //}
+               
+                //Opening connection.
+                connection.Open();
 
-                try
-                {
-                    connection.Open();
-                    SqlDataReader reader = command.ExecuteReader();
+                //Start reading data.
+                using (SqlDataReader reader = command.ExecuteReader())
+                { 
                     while (reader.Read())
                     {
-                        T obj = (T)typeof(T).GetConstructor(new Type[] { }).Invoke(null);
-                        foreach (var propertyInfo in obj.GetType().GetProperties())
+                        T data = (T)typeof(T).GetConstructor(new Type[] { }).Invoke(null);
+                        foreach (var propertyInfo in data.GetType().GetProperties())
                         {
-                            propertyInfo.SetValue(obj, reader[propertyInfo.Name]);
+                            propertyInfo.SetValue(data, reader[propertyInfo.Name]);
                         }
 
-                        list.Add(obj);
+                        result.Add(data);
                     }
-                    reader.Close();
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                }
-                    
-
+                              
             }
 
-            return list;
+            return result;
         }
     }
 }
